@@ -60,7 +60,7 @@ class Executor {
                     test.step[iStep].expectedResult=data;
                     this.updateTest(test['_id'],test);
                 }
-                else if (step.type=='noTest')
+                else if (step.type=='ignoreResult')
                 {
                     result.status='PASS';
                     result.reason = 'Content not tested';

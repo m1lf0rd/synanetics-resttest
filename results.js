@@ -16,7 +16,7 @@ class ResultsManager {
                 var o_id = new mongo.ObjectID(testid);
                 if (latest)
                 {
-                    theCollection.findOne({'test':o_id},{'sort':{'dateTime':0}}, (err, doc) => {
+                    theCollection.findOne({'test':o_id},{'sort':[['dateTime','descending']]}, (err, doc) => {
                         if (err) {
                             reject(err);
                         }
