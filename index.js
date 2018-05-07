@@ -1,6 +1,7 @@
 const RestServer = require('./server');
 const Config = require('./config');
 const TestManager = require('./tests');
+const ResultsManager = require('./results');
 const Executor = require('./executor');
 const MongoClient = require('mongodb').MongoClient;
 const MongoServer = require('mongodb').MongoServer;
@@ -20,13 +21,16 @@ MongoClient.connect(config.db,  (err,db)=>
       {
         let theDb = db.db();
         let testManager = new TestManager(theDb);
+        let resultsManager = new ResultsManager(theDb);
         let executor = new Executor(theDb);
 
-        server.AddRoute("POST","/test",(params,content)=>testManager.AddTest(content));
-        server.AddRoute("GET","/test/:id",(params,content)=>testManager.GetTest(params['id']));
-        server.AddRoute("GET","/test",(params,content)=>testManager.GetTests());
-        server.AddRoute("DELETE","/test/:id",(params,content)=>testManager.DeleteTest(params['id']));
+        server.AddRoute("POST","/test",(params,queryparams,content)=>testManager.AddTest(content));
+        server.AddRoute("PUT","/test/:id",(params,queryparams,content)=>testManager.UpdateTest(content,params['id']));
+        server.AddRoute("GET","/test/:id",(params,queryparams,content)=>testManager.GetTest(params['id']));
+        server.AddRoute("GET","/test",(params,queryparams,content)=>testManager.GetTests());
+        server.AddRoute("DELETE","/test/:id",(params,queryparams,content)=>testManager.DeleteTest(params['id']));
+        server.AddRoute("GET","/result",(params,queryparams,content)=>resultsManager.GetResults(queryparams['test'],queryparams['latest']));
         server.RunService(config.port);
-        setInterval(()=>executor.RunTests(),config.periodicity*100);
+        if (config.mode!="notest") setInterval(()=>executor.RunTests(),config.periodicity*100);
       }
     });

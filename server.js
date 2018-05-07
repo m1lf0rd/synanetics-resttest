@@ -13,21 +13,22 @@ class RestHandler {
 }
 
 class RoutedRequest extends RestHandler {
-	constructor(handler, params,content={}) {
+	constructor(handler, params,queryparams,content={}) {
 		super();
 
 		this.handler = handler;
         this.params = params;
+        this.queryparams=queryparams;
         this.content = content;
 	}
 
 	
 	Execute() {
-        return  this.handler(this.params,this.content);
+        return  this.handler(this.params,this.queryparams,this.content);
         let This=this;
         return new Promise( (resolve,reject) => {
             console.log("Executing handler");
-            let response = This.handler(This.params,This.content);
+            let response = This.handler(This.params,This.queryparams,This.content);
             resolve(response);
             /*Promise.resolve(response).then((response) => {
                             resolve(response);
@@ -144,18 +145,30 @@ class RestServer {
     }
 	
 	parsePathParams(method,uri,body) {
+        let uriparts=uri.split('?');
+        
+        let queryparts=(uriparts.length>0)?uriparts[1].split('&'):[];
+        
+        let queryparams=[];
+        for (let iQuery in queryparts)
+        {
+            let querypair=queryparts[iQuery].split('=');
+            queryparams[querypair[0]]=querypair[1];
+            
+        }
+
         for (let index=0;index<this.routes.length;index++) {
             console.log("Matching: "+this.routes[index].method.toUpperCase()+" "+this.routes[index].path+" to "+method.toUpperCase()+" "+uri);    ;                    
             if (this.routes[index].method.toUpperCase()===method.toUpperCase()) {
                 let matcher = this.prepareMatch(this.routes[index].path);
-                let matches = uri.match(matcher.expression);
+                let matches = uriparts[0].match(matcher.expression);
                 if (matches !== null && matches.length === matcher.params.length+1) {
                     let params = [];
                     for (let iParam=0;iParam<matcher.params.length;iParam++) {
                         params[matcher.params[iParam].substr(2)]=matches[iParam+1];
                     }
                     console.log("Match");
-                    return new RoutedRequest(this.routes[index].func,params,body);
+                    return new RoutedRequest(this.routes[index].func,params,queryparams,body);
                 }
                 else
                 {
