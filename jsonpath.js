@@ -20,6 +20,19 @@ class JSONPath {
         if (JSONPath.noisy) console.log(val);
     }
 
+    static explainMatch(m,aVals)
+    {
+        if (!m) return m;
+        let explain={'matched':m[0]};
+        for (let i=0;i<aVals.length;i++)
+        {
+            if (typeof aVals[i]!='undefined'){
+                explain[aVals[i]]=m[i+1];
+            }
+        }
+        return explain;
+    }
+
     static aggregate(op,array)
     {
         if (op=='length') return array.length;
@@ -109,24 +122,17 @@ class JSONPath {
         var index;
         var matched=[];
 
-        var m = path.match(/^\?\(([^\)]+)\)\]/);
+        let m = this.explainMatch(path.match(/^\?\(([^\)]+)\)\]/),
+                ['expression']);
         if (m) {
-            this.log("Testing expression: "+m[1]);
-            var mexp = m[1].match(/(\S+)\s*(==|!=|>=|>|<=|<|=~)\s*(\S[\S\s]*)/);
+            this.log("Testing expression: "+m.expression); //1
+            var mexp = this.explainMatch(m.expression.match(/(\S+)\s*(==|!=|>=|>|<=|<|=~)\s*(\S[\S\s]*)/)
+                ,['lhs','op','rhs']); //1
             if (mexp) {
-                this.log("Expression: "+ mexp[1]+" "+mexp[2]+" "+mexp[3]);
-                path=path.slice(m[0].length);
+                this.log("Expression: "+ mexp.lhs+" "+mexp.op+" "+mexp.rhs);  //1,2,3
+                path=path.slice(m.matched.length); //0
                 for (index=0;index<array.length;index++) {
-                    if (this.expevaluate(this.expval(mexp[1],array[index]),mexp[2],this.expval(mexp[3],array[index]))) {
-                        /*if (path=='') {
-                            if (mode=='set') array[index]=val;
-                            matched=matched.concat(array[index]);
-                        } else if (path.match(/^\.[\$\w]+\(\)$/)) {
-                            if (mode=='set') throw "Aggregation functions cannot be used in a set expression"
-                            matched=matched.concat(array[index]);
-                        } else {
-                            matched=matched.concat(this.search(mode,path,root,val,array[index]));
-                        }*/
+                    if (this.expevaluate(this.expval(mexp.lhs,array[index]),mexp.op,this.expval(mexp.rhs,array[index]))) { //1,2,3
                         matched=matched.concat(this.captureOrMoveOn(mode,path,root,val,array,index));
                     }
                 }
@@ -136,57 +142,37 @@ class JSONPath {
         var todo=[];
 
         while (1) {
-            let m = path.match(/^(?:\*|((@length\-?|-)?(\d*))?(:((@length\-?|-)?(\d*))?)?)([\,\]])/);
+            let m = this.explainMatch(path.match(/^(?:\*|((@length\-?|-)?(\d*))?(:((@length\-?|-)?(\d*))?)?)([\,\]])/),
+                    [,'fromEnd','fromCount','toDef','','toEnd','toCount','contChar']);
 
-            /*  m[1]=@length-123
-                m[2]=@length-
-                m[3]=123
-                m[4]=:@length-123
-                m[5]=@length-123
-                m[6]=@length-
-                m[7]=123
-                m[8]=, */
             let min=0,max=0; 
             if (!m) throw "Invalid JSONPath at: "+path;
-            else if (m[0].charAt(0)=='*') {
+            else if (m.matched.charAt(0)=='*') { 
                 this.log("Wild char search");
                 max=array.length-1;
             } else {
-                min = this.arrayIndexFromExp(m[2],m[3],array.length);
+                min = this.arrayIndexFromExp(m.fromEnd,m.fromCount,array.length); 
                 
                 if (typeof min=='undefined') {
-                    if (typeof m[4]=='undefined') throw "Invalid JSONPath at: "+path;
+                    if (typeof m.toDef=='undefined') throw "Invalid JSONPath at: "+path; 
                     min=0;
                 }
 
-                if (typeof m[4]=='undefined') max=min;
+                if (typeof m.toDef=='undefined') max=min; 
                 else {
-                    max = this.arrayIndexFromExp(m[6],m[7],array.length);
+                    max = this.arrayIndexFromExp(m.toEnd,m.toCount,array.length); 
                     if (typeof max=='undefined') max=array.length-1;
                 }
                 this.log("Min-Max search: " +min+"-"+max);
             }
             this.log("Marking array elements: "+min+"-"+max);
             for (index=Math.max(0,min);index<=Math.min(array.length-1,max);index++) todo[index]=true;
-            path=path.slice(m[0].length);
-            if (m[8]==']') break;
+            path=path.slice(m.matched.length); 
+            if (m.contChar==']') break; 
         }
         this.log("Array walk with path: "+path);
         for (index=0;index<=todo.length;index++) if (todo[index]) {
 
-            /*if (path=='') {
-                this.log("Matched array element");
-                if (mode=='set') array[index]=val;
-                matched=matched.concat(array[index]);
-            } else if (path.match(/^\.[\$\w]+\(\)$/)) {
-                this.log("Aggregating array element");
-                if (mode=='set') throw "Aggregation functions cannot be used in a set expression"
-                matched=matched.concat(array[index]);
-            } else
-            {
-                if (typeof array[index] == 'undefined') array[index] = new Object;
-                matched=matched.concat(this.search(mode,path,root,val,array[index]));
-            }*/
             matched=matched.concat(this.captureOrMoveOn(mode,path,root,val,array,index));
         }
         return  mode=='set'?matched.length>0:matched;
@@ -196,26 +182,27 @@ class JSONPath {
 
         var matched=[];
 
-        var m = path.match(/^\?\(([^\)]+)\)\]/);
+        var m = this.explainMatch(path.match(/^\?\(([^\)]+)\)\]/),
+                ['expression']);
         if (m) {
-            var mexp = m[1].match(/(\S+)\s*(==|!=|>=|>|<=|<|=~)\s*(\S[\S\s]*)/);
+            var mexp = this.explainMatch(m.expression.match(/(\S+)\s*(==|!=|>=|>|<=|<|=~)\s*(\S[\S\s]*)/),
+                    ['lhs','op','rhs']); //1
             if (mexp) {
-                this.log("Expression: "+ mexp[1]+" "+mexp[2]+" "+mexp[3]);
+                this.log("Expression: "+ mexp.lhs+" "+mexp.op+" "+mexp.rhs); //1,2,3
                 path=path.slice(m[0].length);
-                if (this.expevaluate(this.expval(mexp[1],obj),mexp[2],this.expval(mexp[3],obj))) {
+                if (this.expevaluate(this.expval(mexp.lhs,obj),mexp.op,this.expval(mexp.rhs,obj))) { //1,2,3
                     matched=matched.concat(this.captureOrMoveOn(mode,path,root,val,obj));
                 }
                 return mode=='set'?matched.length>0:matched;
             }
         }
        
-        m = path.match(/^(?:\*|(['"])([\$\w]+)\1)\]/);
+        m = this.explainMatch(path.match(/^(?:\*|(['"])([\$\w]+)\1)\]/),
+                [,'property']);
 
-        /*  m[1]='
-            m[2]=prop */
         if (m) {
-            path=path.slice(m[0].length);
-            if (m[0].charAt(0)=='*') {
+            path=path.slice(m.matched.length); // 0
+            if (m.matched.charAt(0)=='*') { // 0 
                 this.log("Wild char property");
                 for (let index in obj) {
                     matched=matched.concat(this.captureOrMoveOn(mode,path,root,val,obj,index));
@@ -223,9 +210,9 @@ class JSONPath {
             }
             else
             {
-                this.log("Property match: "+m[2]);
-                if (typeof obj[m[2]] != 'undefined') {
-                    matched=matched.concat(this.captureOrMoveOn(mode,path,root,val,obj,m[2]));
+                this.log("Property match: "+m.property); // 2
+                if (typeof obj[m.property] != 'undefined') {
+                    matched=matched.concat(this.captureOrMoveOn(mode,path,root,val,obj,m.property)); //2
                 }
             }
         } 
@@ -239,13 +226,7 @@ class JSONPath {
         var matched=[];
         if (typeof obj[at] != 'undefined')
         {
-            if (path=='') {
-                if (mode=='set') obj[at]=val;
-                matched=matched.concat(obj[at]);
-            } else if (path.match(/^\.[\$\w]+\(\)$/)) {
-                if (mode=='set') throw "Aggregation functions cannot be used in a set expression"
-                matched=matched.concat(obj[at]);
-            } else matched=matched.concat(this.search(mode,path,root,val,obj[at]));
+            matched=matched.concat(this.captureOrMoveOn(mode,path,root,val,obj,at)); 
         }
         for (var i in obj)
         {
@@ -263,27 +244,15 @@ class JSONPath {
         }
         if (typeof obj == 'undefined') return (mode=='set'?false:[]);
 
-        let m = path.match(/^\[|(\.\.|\.)([\$\w]+)/);
+        let m = this.explainMatch(path.match(/^\[|(\.\.|\.)([\$\w]+)/),
+                ['type','property']);
         if (!m) throw "Invalid JSONPath at: "+path;
 
-        path = path.slice(m[0].length);
-        if (m[1]=='..') return  this.deepSearch(mode,m[2],path,root,val,obj);
-        else if ((m[1]=='.') && (typeof obj[m[2]]!='undefined') ) {
-            /*if (path=='') {
-                if (mode=='set') {
-                    obj[m[2]]=val;
-                    return true;
-                }
-                return [obj[m[2]]];
-            }
-            else if (path.match(/^\.[\$\w]+\(\)$/)) {
-                if (mode=='set') throw "Aggregation functions cannot be used in a set expression"
-                return [obj[m[2]]];
-            }
-            else {
-                return  this.search(mode,path,root,val,obj[m[2]]);
-            }*/
-            return  this.captureOrMoveOn(mode,path,root,val,obj,m[2]);
+        path = path.slice(m.matched.length); //0
+        if (m.type=='..') return  this.deepSearch(mode,m[2],path,root,val,obj); //1
+        else if ((m.type=='.') && (typeof obj[m.property]!='undefined') ) { //1,2
+
+            return  this.captureOrMoveOn(mode,path,root,val,obj,m.property); // 2
         }
         else {
             // []
