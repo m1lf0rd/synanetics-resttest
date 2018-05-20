@@ -44,6 +44,8 @@ var testdata={
     ]
 };
 
+var testsimplearray=[1,1,3,5,3,7,7,9,4,4];
+
 var tests = [
     {'description':'Get Property Through Array Index', 'verbose':0,
      'execute': function () {
@@ -144,6 +146,22 @@ var tests = [
     },
     'test': function (results) {
         return JSONPath.Get('$.books[?(@author=="JD Salinger")].stock[*].price.sum()',results)==120.9;
+       }
+   },
+   {'description':'Deep search on price', 'verbose':0,
+    'execute': function () {
+        return JSONPath.Get('$..price.avg()',testdata);
+    },
+    'test': function (results) {
+        return (results.toFixed(2)==29.09);
+       }
+   },
+   {'description':'Aggregation on a simple array', 'verbose':0,
+    'execute': function () {
+        return JSONPath.Get('$.std()',testsimplearray);
+    },
+    'test': function (results) {
+        return (results.toFixed(2)==2.50);
        }
    }
      
