@@ -147,7 +147,7 @@ class RestServer {
 	parsePathParams(method,uri,body) {
         let uriparts=uri.split('?');
         
-        let queryparts=(uriparts.length>0)?uriparts[1].split('&'):[];
+        let queryparts=(uriparts.length>1)?uriparts[1].split('&'):[];
         
         let queryparams=[];
         for (let iQuery in queryparts)

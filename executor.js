@@ -1,5 +1,6 @@
 var http = require('http');
 var https = require('https');
+var JSONPath = require('./jsonpath');
 
 class Executor {
 	constructor(db) {
@@ -67,6 +68,20 @@ class Executor {
                 }
                 else
                 {
+					let oExpectedResult=JSON.parse(step.expectedResult);
+					let oActual=JSON.parse(data);
+					if (typeof step.exclusions !== 'undefined') {
+						console.log('Found an exclusion\n')
+						for (let exception in step.exclusions ) {
+							console.log('Exclusion '+step.exclusions[exception]+'\n');
+							JSONPath.Set(step.exclusions[exception],oExpectedResult,'');
+                            JSONPath.Set(step.exclusions[exception],oActual,'');
+						}
+                        data=JSON.stringify(oActual);
+						console.log('data '+data+'\n');
+						step.expectedResult=JSON.stringify(oExpectedResult);
+						console.log(`expected ${step.expectedResult}\n`);
+					}
                     if (step.expectedResult==data) {
                         result.status='PASS';
                     }

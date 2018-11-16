@@ -1,0 +1,6 @@
+{
+    "db":   "mongodb://localhost:27017/TestHarness",
+    "port": 1800,
+    "periodicity": 60,
+    "mode": "normal"
+}
