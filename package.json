@@ -18,6 +18,6 @@
   },
   "homepage": "https://github.com/m1lf0rd/synanetics-resttest#readme",
   "dependencies": {
-    "mongodb": "^3.0.7"
+    "mongodb": "^3.0.10"
   }
 }
